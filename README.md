@@ -126,7 +126,7 @@ Output: Classification Result + Confidence
 
 ## Models
 
-The application includes 4 pre-trained models located in `models/`:
+The application includes 4 pre-trained models located in `models/checkpoints/`:
 
 1. **binary_split_by_recording_resnet_18.pth**
    - Architecture: ResNet18
@@ -159,11 +159,13 @@ MG Classifier/
 ├── model_inference.py             # Model loading and inference
 ├── requirements.txt               # Python dependencies
 ├── README.md                      # This file
-├── models/                        # Pre-trained model checkpoints
-│   ├── binary_split_by_recording_resnet_18.pth
-│   ├── binary_split_by_speaker_resnet_18.pth
-│   ├── multiclass_split_by_recording_vgg_19_bn.pth
-│   └── multiclass_split_by_speaker_vgg_13_bn.pth
+├── models/                        # Model definitions and checkpoints
+│   ├── model.py                   # Model architecture definitions
+│   └── checkpoints/               # Pre-trained model checkpoints
+│       ├── binary_split_by_recording_resnet_18.pth
+│       ├── binary_split_by_speaker_resnet_18.pth
+│       ├── multiclass_split_by_recording_vgg_19_bn.pth
+│       └── multiclass_split_by_speaker_vgg_13_bn.pth
 └── temp/                          # Temporary files (auto-generated)
 ```
 

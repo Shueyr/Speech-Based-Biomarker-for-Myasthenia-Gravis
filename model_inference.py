@@ -16,7 +16,7 @@ class ModelInference:
         """Initialize model inference handler."""
         # Add models directory to path
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        models_path = os.path.join(current_dir, "models", "VGG")
+        models_path = os.path.join(current_dir, "models")
         
         if models_path not in sys.path:
             sys.path.insert(0, models_path)
@@ -30,10 +30,10 @@ class ModelInference:
         if not os.path.exists(model_file_path):
             raise FileNotFoundError(f"Model file not found at: {model_file_path}")
             
-        spec = importlib.util.spec_from_file_location("vgg_model", model_file_path)
-        vgg_model = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(vgg_model)
-        self.build_model = vgg_model.build_model
+        spec = importlib.util.spec_from_file_location("model_builder", model_file_path)
+        model_builder = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(model_builder)
+        self.build_model = model_builder.build_model
         
         # Cache for loaded models
         self.loaded_models = {}

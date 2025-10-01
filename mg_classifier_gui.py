@@ -38,25 +38,25 @@ class MGClassifierGUI:
         # Model configurations
         self.models_config = {
             "Binary - Recording Split (ResNet18)": {
-                "path": "models/binary_split_by_recording_resnet_18.pth",
+                "path": "models/checkpoints/binary_split_by_recording_resnet_18.pth",
                 "architecture": "resnet18",
                 "num_classes": 2,
                 "labels": ["Healthy", "Sick"]
             },
             "Binary - Speaker Split (ResNet18)": {
-                "path": "models/binary_split_by_speaker_resnet_18.pth",
+                "path": "models/checkpoints/binary_split_by_speaker_resnet_18.pth",
                 "architecture": "resnet18",
                 "num_classes": 2,
                 "labels": ["Healthy", "Sick"]
             },
             "Multi-class - Recording Split (VGG19-BN)": {
-                "path": "models/multiclass_split_by_recording_vgg_19_bn.pth",
+                "path": "models/checkpoints/multiclass_split_by_recording_vgg_19_bn.pth",
                 "architecture": "vgg19_bn",
                 "num_classes": 4,
                 "labels": ["Normal", "Mild", "Moderate", "Severe"]
             },
             "Multi-class - Speaker Split (VGG13-BN)": {
-                "path": "models/multiclass_split_by_speaker_vgg_13_bn.pth",
+                "path": "models/checkpoints/multiclass_split_by_speaker_vgg_13_bn.pth",
                 "architecture": "vgg13_bn",
                 "num_classes": 4,
                 "labels": ["Normal", "Mild", "Moderate", "Severe"]
