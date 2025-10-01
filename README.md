@@ -81,13 +81,7 @@ python mg_classifier_gui.py
 
 ### Using the Application
 
-1. **Select Audio Input**
-   - **Option A: Record Audio**
-     - Click "🎤 Start Recording"
-     - Speak clearly, emphasizing 'ah' sounds
-     - Click "⏹ Stop Recording" when done
-   
-   - **Option B: Load Existing File**
+1. **Load Existing File**
      - Click "Browse"
      - Select a WAV file from your computer
 
@@ -173,46 +167,6 @@ MG Classifier/
 └── temp/                          # Temporary files (auto-generated)
 ```
 
-## Troubleshooting
-
-### Common Issues
-
-1. **"sounddevice library not installed" error**
-   - Run: `pip install sounddevice soundfile`
-
-2. **"Model checkpoint not found" error**
-   - Ensure all 4 .pth files are in the `models/` directory
-   - Check that file names match exactly
-
-3. **"FormantsTracker not found" error**
-   - Ensure the FormantsTracker is properly installed in `../external/FormantsTracker/`
-   - The main project structure must be intact
-
-4. **Slow processing**
-   - First run downloads required models (wav2vec2, Silero VAD)
-   - Subsequent runs will be faster
-   - GPU acceleration is automatic if CUDA is available
-
-5. **Recording not working**
-   - Check microphone permissions
-   - Ensure microphone is properly connected
-   - Try using the file upload option instead
-
 ## Technical Details
 
-- **Input Format**: WAV files, 16kHz sample rate
-- **Model Input Shape**: [1, 257, 64] (batch, frequency bins, time frames)
-- **Processing Time**: ~30-60 seconds per audio file (depending on length)
-- **Supported Audio Length**: Any length (automatically segmented)
-
-## Notes
-
-- The application creates temporary files in the `temp/` directory during processing
-- Temporary files are cleaned up after each inference run
-- First run may be slower due to model downloads
-- GPU acceleration is used automatically if available
-
-## Support
-
-For issues or questions, please refer to the main project documentation or contact the project maintainers.
-
+- **Input Format**: WAV files
