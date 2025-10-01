@@ -1,0 +1,29 @@
+MG Classifier GUI Application
+
+This project includes and builds upon the FormantsTracker library.
+
+## FormantsTracker Attribution
+
+FormantsTracker
+Copyright (c) 2022 Yosi Shrem, Felix Kreuk and Joseph Keshet
+Licensed under the MIT License
+
+Original repository: https://github.com/MLSpeech/FormantsTracker
+Original paper: "Formant Estimation and Tracking using Probabilistic Heat-Maps"
+Authors: Yosi Shrem, Felix Kreuk, Joseph Keshet
+Published at Interspeech 2022
+
+The FormantsTracker component is used under the MIT License.
+See FormantsTracker/LICENSE for the full license text.
+
+## Modifications
+
+This MG Classifier application extends the FormantsTracker functionality
+for Myasthenia Gravis detection and classification. The FormantsTracker
+code has been modified to integrate with the MG classifier pipeline.
+
+## Your Work
+
+This application represents original work in the field of medical speech
+analysis for Myasthenia Gravis detection, building upon the excellent
+foundation provided by the FormantsTracker library.

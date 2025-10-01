@@ -1,0 +1,38 @@
+# MG Classifier GUI Application Requirements
+
+# Core dependencies
+torch>=2.0.0
+torchaudio>=2.0.0
+torchvision>=0.15.0
+
+# Audio processing
+sounddevice>=0.4.6
+soundfile>=0.12.1
+
+# Phoneme detection
+transformers>=4.30.0
+
+# Configuration
+omegaconf>=2.3.0
+hydra-core>=1.3.0
+
+# Scientific computing
+numpy>=1.24.0
+scipy>=1.10.0
+
+# Model evaluation (if needed)
+scikit-learn>=1.3.0
+
+# GUI (usually comes with Python)
+# tkinter is included in standard Python installation
+
+# Optional: for better audio I/O
+# pyaudio>=0.2.13  # Alternative to sounddevice, may require system libraries
+
+# FormantsTracker dependencies
+boltons>=21.0.0
+matplotlib>=3.6.2
+
+# Note: Some version conflicts exist between main project and FormantsTracker
+# The main project uses newer versions of torch/torchaudio which should be compatible
+
