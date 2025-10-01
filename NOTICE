@@ -21,9 +21,3 @@ See FormantsTracker/LICENSE for the full license text.
 This MG Classifier application extends the FormantsTracker functionality
 for Myasthenia Gravis detection and classification. The FormantsTracker
 code has been modified to integrate with the MG classifier pipeline.
-
-## Your Work
-
-This application represents original work in the field of medical speech
-analysis for Myasthenia Gravis detection, building upon the excellent
-foundation provided by the FormantsTracker library.
