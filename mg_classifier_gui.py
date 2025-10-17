@@ -9,6 +9,10 @@ from tkinter import ttk, filedialog, messagebox
 import os
 import sys
 import threading
+from collections import Counter
+
+# Configuration: Set to True for per-segment results, False for majority vote
+SHOW_PER_SEGMENT_RESULTS = True
 
 # Add parent directory to path to import project modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -23,7 +27,7 @@ class MGClassifierGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("MG Classifier - Speech Analysis Tool")
-        self.root.geometry("570x620")
+        self.root.geometry("600x640")
         self.root.resizable(False, False)
         
         # State variables
@@ -132,14 +136,15 @@ class MGClassifierGUI:
         results_frame = ttk.LabelFrame(main_frame, text="Classification Results", padding="10")
         results_frame.grid(row=5, column=0, columnspan=3, sticky=(tk.W, tk.E))
         
-        self.results_label = ttk.Label(results_frame, text="No results yet", 
-                                       font=('Helvetica', 14, 'bold'),
-                                       foreground='gray')
-        self.results_label.grid(row=0, column=0, pady=10)
+        # Results text area (for multi-line results)
+        self.results_text = tk.Text(results_frame, height=6, width=70, state='disabled',
+                                   wrap=tk.WORD, font=('Courier', 10))
+        self.results_text.grid(row=0, column=0, pady=10)
         
-        self.confidence_label = ttk.Label(results_frame, text="", 
-                                         font=('Helvetica', 10))
-        self.confidence_label.grid(row=1, column=0, pady=5)
+        results_scrollbar = ttk.Scrollbar(results_frame, orient="vertical", 
+                                        command=self.results_text.yview)
+        results_scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
+        self.results_text.config(yscrollcommand=results_scrollbar.set)
         
     def browse_file(self):
         """Open file dialog to select audio file."""
@@ -171,8 +176,10 @@ class MGClassifierGUI:
         self.progress_text.config(state='normal')
         self.progress_text.delete(1.0, tk.END)
         self.progress_text.config(state='disabled')
-        self.results_label.config(text="No results yet", foreground='gray')
-        self.confidence_label.config(text="")
+        self.results_text.config(state='normal')
+        self.results_text.delete(1.0, tk.END)
+        self.results_text.insert(1.0, "No results yet")
+        self.results_text.config(state='disabled')
     
     def run_inference(self):
         """Run the complete inference pipeline."""
@@ -191,8 +198,10 @@ class MGClassifierGUI:
         
         # Disable run button during processing
         self.run_button.config(state='disabled')
-        self.results_label.config(text="Processing...", foreground='orange')
-        self.confidence_label.config(text="")
+        self.results_text.config(state='normal')
+        self.results_text.delete(1.0, tk.END)
+        self.results_text.insert(1.0, "Processing...")
+        self.results_text.config(state='disabled')
         
         # Run inference in separate thread to avoid blocking GUI
         thread = threading.Thread(target=self._run_inference_thread, daemon=True)
@@ -242,40 +251,58 @@ class MGClassifierGUI:
                 all_phoneme_segments.append((segment_path, phoneme_segments))
                 self.log_progress(f"  Segment {i+1}: Found {len(phoneme_segments)} 'ah' phonemes")
             
-            # Step 4: Run formant tracking on each segment
-            self.log_progress("Step 4: Running formant tracking...")
-            formant_data_list = []
+            # Step 4: Run formant tracking and inference on each segment
+            self.log_progress("Step 4: Processing each segment...")
+            segment_results = []
+            
             for i, (segment_path, phoneme_segments) in enumerate(all_phoneme_segments):
-                # Only process segments that contain 'ah' phonemes
-                if len(phoneme_segments) > 0:
-                    encoder_output = self.formant_processor.process_segment(segment_path)
-                    formant_data_list.append((encoder_output, phoneme_segments))
-                    self.log_progress(f"  Segment {i+1}: Formant tracking complete")
-                else:
-                    self.log_progress(f"  Segment {i+1}: No 'ah' phonemes found, skipping formant tracking")
+                segment_num = i + 1
+                time_range = f"{i*10}-{min((i+1)*10, len(segment_paths)*10)}s"
+                
+                # Check if segment has 'ah' phonemes
+                if len(phoneme_segments) == 0:
+                    self.log_progress(f"  Segment {segment_num}: No 'ah' phonemes - Skipped")
+                    segment_results.append({
+                        'segment_number': segment_num,
+                        'time_range': time_range,
+                        'prediction': 'Skipped',
+                        'reason': 'No /ah/ detected'
+                    })
+                    continue
+                
+                # Run formant tracking
+                self.log_progress(f"  Segment {segment_num}: Running formant tracking...")
+                encoder_output = self.formant_processor.process_segment(segment_path)
+                
+                # Extract 'ah' segments for this segment only
+                single_segment_data = [(encoder_output, phoneme_segments)]
+                concatenated_tensor = self.formant_processor.extract_and_concatenate_ah_segments(
+                    single_segment_data
+                )
+                
+                # Run model inference
+                self.log_progress(f"  Segment {segment_num}: Running inference...")
+                prediction, confidence, label = self.model_inference.predict(
+                    concatenated_tensor,
+                    model_config['path'],
+                    model_config['architecture'],
+                    model_config['num_classes'],
+                    model_config['labels']
+                )
+                
+                self.log_progress(f"  Segment {segment_num}: {label}")
+                
+                segment_results.append({
+                    'segment_number': segment_num,
+                    'time_range': time_range,
+                    'prediction': label,
+                    'reason': None
+                })
             
-            # Step 5: Extract and concatenate 'ah' segments from formants
-            self.log_progress("Step 5: Extracting 'ah' segments from formant data...")
-            concatenated_tensor = self.formant_processor.extract_and_concatenate_ah_segments(
-                formant_data_list
-            )
-            self.log_progress(f"✓ Concatenated tensor shape: {concatenated_tensor.shape}")
-            
-            # Step 6: Run model inference
-            self.log_progress("Step 6: Running model inference...")
-            prediction, confidence, label = self.model_inference.predict(
-                concatenated_tensor,
-                model_config['path'],
-                model_config['architecture'],
-                model_config['num_classes'],
-                model_config['labels']
-            )
-            
-            self.log_progress(f"✓ Inference complete!")
-            self.log_progress(f"Prediction: {label} (confidence: {confidence:.2%})")
+            self.log_progress(f"✓ Processing complete!")
             
             # Update results in GUI
-            self.root.after(0, self._update_results, label, confidence)
+            self.root.after(0, self._update_results, segment_results, model_config['labels'])
             
         except Exception as e:
             error_msg = f"Error during processing: {str(e)}"
@@ -286,23 +313,54 @@ class MGClassifierGUI:
             # Re-enable run button
             self.root.after(0, lambda: self.run_button.config(state='normal'))
     
-    def _update_results(self, label, confidence):
-        """Update results display."""
-        # Determine color based on result
-        if "Healthy" in label or "Normal" in label:
-            color = "green"
-        elif "Mild" in label:
-            color = "orange"
-        else:
-            color = "red"
+    def _update_results(self, segment_results, class_labels):
+        """Update results display based on SHOW_PER_SEGMENT_RESULTS setting."""
+        self.results_text.config(state='normal')
+        self.results_text.delete(1.0, tk.END)
         
-        self.results_label.config(text=f"Result: {label}", foreground=color)
-        self.confidence_label.config(text=f"Confidence: {confidence:.2%}")
+        if SHOW_PER_SEGMENT_RESULTS:
+            # Display per-segment results
+            for result in segment_results:
+                seg_num = result['segment_number']
+                time_range = result['time_range']
+                prediction = result['prediction']
+                
+                if result['reason']:
+                    line = f"Segment {seg_num} ({time_range}): {result['reason']}\n"
+                else:
+                    line = f"Segment {seg_num} ({time_range}): {prediction}\n"
+                
+                self.results_text.insert(tk.END, line)
+        else:
+            # Display majority vote result
+            valid_predictions = [r['prediction'] for r in segment_results if r['reason'] is None]
+            
+            if not valid_predictions:
+                self.results_text.insert(tk.END, "No valid segments to classify\n")
+            else:
+                # Count predictions
+                vote_counts = Counter(valid_predictions)
+                majority_class = vote_counts.most_common(1)[0][0]
+                majority_count = vote_counts[majority_class]
+                total_valid = len(valid_predictions)
+                
+                # Display result
+                self.results_text.insert(tk.END, f"Result: {majority_class}\n")
+                self.results_text.insert(tk.END, f"(Majority vote: {majority_count}/{total_valid} segments)\n")
+                
+                # Show vote breakdown
+                self.results_text.insert(tk.END, "\nVote breakdown:\n")
+                for class_name, count in vote_counts.most_common():
+                    self.results_text.insert(tk.END, f"  {class_name}: {count}\n")
+        
+        self.results_text.config(state='disabled')
     
     def _reset_results(self):
         """Reset results display."""
-        self.results_label.config(text="Processing failed", foreground='red')
-        self.confidence_label.config(text="")
+        self.results_text.config(state='normal')
+        self.results_text.delete(1.0, tk.END)
+        self.results_text.insert(1.0, "Processing failed")
+        self.results_text.config(state='disabled')
 
 
 def main():
