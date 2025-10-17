@@ -97,16 +97,18 @@ class FormantProcessor:
             except:
                 pass
     
-    def extract_and_concatenate_ah_segments(self, formant_data_list, fixed_len=64):
+    def extract_and_concatenate_ah_segments(self, formant_data_list, fixed_len=64, return_intermediate=False):
         """
         Extract 'ah' phoneme segments from formant data and concatenate them.
         
         Args:
             formant_data_list: List of tuples (encoder_output, phoneme_segments)
             fixed_len: Target length in time frames (default: 64)
+            return_intermediate: If True, return intermediate tensors for saving
             
         Returns:
-            Tensor of shape [1, 257, 64] ready for model input
+            If return_intermediate=False: Tensor of shape [1, 257, 64] ready for model input
+            If return_intermediate=True: Tuple of (final_tensor, extracted_tensor_before_padding)
         """
         all_segments = []
         
@@ -132,10 +134,16 @@ class FormantProcessor:
         if not all_segments:
             # No 'ah' segments found, return zeros
             print("Warning: No 'ah' segments found, using zeros")
-            return torch.zeros((1, 257, fixed_len), dtype=torch.float32)
+            zero_tensor = torch.zeros((1, 257, fixed_len), dtype=torch.float32)
+            if return_intermediate:
+                return zero_tensor, torch.zeros((257, 0), dtype=torch.float32)
+            return zero_tensor
         
         # Concatenate all segments
         concatenated = torch.cat(all_segments, dim=1)  # Shape: [257, total_frames]
+        
+        # Save pre-normalized version for intermediate results
+        extracted_tensor = concatenated.clone() if return_intermediate else None
         
         # Pad or crop to fixed_len
         cur_len = concatenated.shape[1]
@@ -150,5 +158,7 @@ class FormantProcessor:
         # Add batch dimension: [1, 257, 64]
         concatenated = concatenated.unsqueeze(0)
         
+        if return_intermediate:
+            return concatenated, extracted_tensor
         return concatenated
 

@@ -24,16 +24,18 @@ class PhonemeDetector:
         self.model.eval()
         print("Phoneme detection model loaded successfully")
     
-    def detect_phoneme(self, audio_path, target_phoneme="ah"):
+    def detect_phoneme(self, audio_path, target_phoneme="ah", return_all_phonemes=False):
         """
         Detect timestamps of a specific phoneme in audio file.
         
         Args:
             audio_path: Path to audio file
             target_phoneme: Phoneme to detect (default: "ah")
+            return_all_phonemes: If True, return all phonemes; if False, only target phoneme
             
         Returns:
-            List of (start_time, end_time) tuples in seconds
+            If return_all_phonemes=False: List of (start_time, end_time) tuples for target phoneme
+            If return_all_phonemes=True: Tuple of (target_phoneme_list, all_phonemes_list)
         """
         # Load and preprocess audio
         waveform, sr = torchaudio.load(audio_path)
@@ -66,6 +68,7 @@ class PhonemeDetector:
         
         # Extract phoneme segments
         phoneme_segments = []
+        all_phonemes = [] if return_all_phonemes else None
         prev = None
         start_frame = 0
         
@@ -73,20 +76,42 @@ class PhonemeDetector:
             if phoneme_id != prev:
                 if prev is not None:
                     phoneme = self.processor.tokenizer.convert_ids_to_tokens(prev.item())
+                    start_time = start_frame / time_stride
+                    end_time = i / time_stride
+                    
+                    # Add to all phonemes list if requested
+                    if return_all_phonemes:
+                        all_phonemes.append({
+                            "phoneme": phoneme,
+                            "start": float(start_time),
+                            "end": float(end_time)
+                        })
+                    
+                    # Add to target phoneme list
                     if phoneme == target_phoneme:
-                        start_time = start_frame / time_stride
-                        end_time = i / time_stride
                         phoneme_segments.append((start_time, end_time))
+                
                 start_frame = i
                 prev = phoneme_id
         
         # Handle last phoneme
         if prev is not None:
             phoneme = self.processor.tokenizer.convert_ids_to_tokens(prev.item())
+            start_time = start_frame / time_stride
+            end_time = len(pred_ids) / time_stride
+            
+            if return_all_phonemes:
+                all_phonemes.append({
+                    "phoneme": phoneme,
+                    "start": float(start_time),
+                    "end": float(end_time)
+                })
+            
             if phoneme == target_phoneme:
-                start_time = start_frame / time_stride
-                end_time = len(pred_ids) / time_stride
                 phoneme_segments.append((start_time, end_time))
         
-        return phoneme_segments
+        if return_all_phonemes:
+            return phoneme_segments, all_phonemes
+        else:
+            return phoneme_segments
 

@@ -48,6 +48,7 @@ Thumbs.db
 
 # Project specific
 temp/
+results/
 *.wav
 *.pth
 *.ckpt

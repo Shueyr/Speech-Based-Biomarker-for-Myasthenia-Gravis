@@ -21,6 +21,7 @@ from audio_processor import AudioProcessor
 from phoneme_detector import PhonemeDetector
 from formant_processor import FormantProcessor
 from model_inference import ModelInference
+from results_manager import ResultsManager
 
 
 class MGClassifierGUI:
@@ -214,6 +215,11 @@ class MGClassifierGUI:
             model_config = self.models_config[self.selected_model.get()]
             audio_path = self.audio_file_path.get()
             
+            # Initialize ResultsManager
+            self.log_progress("Initializing results manager...")
+            results_mgr = ResultsManager(audio_path)
+            self.log_progress(f"✓ Results will be saved to: {results_mgr.session_dir}")
+            
             # Initialize components if not already initialized
             self.log_progress("Initializing processing components...")
             
@@ -236,20 +242,33 @@ class MGClassifierGUI:
             # Step 1: Preprocess audio (VAD, trimming, resampling)
             self.log_progress("Step 1: Preprocessing audio...")
             processed_audio_path = self.audio_processor.preprocess(audio_path)
-            self.log_progress(f"✓ Audio preprocessed: {processed_audio_path}")
+            self.log_progress(f"✓ Audio preprocessed")
+            
+            # Save preprocessed audio
+            results_mgr.save_preprocessed_audio(processed_audio_path)
             
             # Step 2: Segment into 10-second chunks
             self.log_progress("Step 2: Segmenting audio into 10-second chunks...")
             segment_paths = self.audio_processor.segment_audio(processed_audio_path)
             self.log_progress(f"✓ Created {len(segment_paths)} segments")
             
+            # Save segment audio files
+            for i, seg_path in enumerate(segment_paths):
+                results_mgr.save_segment_audio(seg_path, i + 1)
+            
             # Step 3: Detect 'ah' phoneme timestamps for each segment
             self.log_progress("Step 3: Detecting 'ah' phoneme timestamps...")
             all_phoneme_segments = []
             for i, segment_path in enumerate(segment_paths):
-                phoneme_segments = self.phoneme_detector.detect_phoneme(segment_path, "ah")
+                # Get both 'ah' timestamps and all phonemes
+                phoneme_segments, all_phonemes = self.phoneme_detector.detect_phoneme(
+                    segment_path, "ah", return_all_phonemes=True
+                )
                 all_phoneme_segments.append((segment_path, phoneme_segments))
                 self.log_progress(f"  Segment {i+1}: Found {len(phoneme_segments)} 'ah' phonemes")
+                
+                # Save phoneme results
+                results_mgr.save_phoneme_results(i + 1, phoneme_segments, all_phonemes)
             
             # Step 4: Run formant tracking and inference on each segment
             self.log_progress("Step 4: Processing each segment...")
@@ -262,11 +281,16 @@ class MGClassifierGUI:
                 # Check if segment has 'ah' phonemes
                 if len(phoneme_segments) == 0:
                     self.log_progress(f"  Segment {segment_num}: No 'ah' phonemes - Skipped")
+                    
+                    # Create visualizations even for skipped segments
+                    results_mgr.create_spectrogram(segment_path, segment_num, None)
+                    
                     segment_results.append({
                         'segment_number': segment_num,
                         'time_range': time_range,
                         'prediction': 'Skipped',
-                        'reason': 'No /ah/ detected'
+                        'reason': 'No /ah/ detected',
+                        'ah_phonemes_count': 0
                     })
                     continue
                 
@@ -274,11 +298,25 @@ class MGClassifierGUI:
                 self.log_progress(f"  Segment {segment_num}: Running formant tracking...")
                 encoder_output = self.formant_processor.process_segment(segment_path)
                 
-                # Extract 'ah' segments for this segment only
+                # Save encoder output
+                results_mgr.save_formant_encoder_output(segment_num, encoder_output)
+                
+                # Extract 'ah' segments for this segment only (with intermediate tensors)
                 single_segment_data = [(encoder_output, phoneme_segments)]
-                concatenated_tensor = self.formant_processor.extract_and_concatenate_ah_segments(
-                    single_segment_data
+                concatenated_tensor, extracted_tensor = self.formant_processor.extract_and_concatenate_ah_segments(
+                    single_segment_data, return_intermediate=True
                 )
+                
+                # Save intermediate and final tensors
+                results_mgr.save_ah_extracted_tensor(segment_num, extracted_tensor)
+                results_mgr.save_ah_normalized_tensor(segment_num, concatenated_tensor)
+                
+                # Create visualizations
+                self.log_progress(f"  Segment {segment_num}: Creating visualizations...")
+                results_mgr.create_spectrogram(segment_path, segment_num, phoneme_segments)
+                results_mgr.create_formant_overlay(segment_path, segment_num, encoder_output, phoneme_segments)
+                results_mgr.create_ah_regions_plot(segment_path, segment_num, phoneme_segments)
+                results_mgr.create_model_input_heatmap(segment_num, concatenated_tensor)
                 
                 # Run model inference
                 self.log_progress(f"  Segment {segment_num}: Running inference...")
@@ -292,14 +330,28 @@ class MGClassifierGUI:
                 
                 self.log_progress(f"  Segment {segment_num}: {label}")
                 
-                segment_results.append({
+                # Store result with probabilities
+                result_data = {
                     'segment_number': segment_num,
                     'time_range': time_range,
                     'prediction': label,
-                    'reason': None
-                })
+                    'reason': None,
+                    'ah_phonemes_count': len(phoneme_segments),
+                    'class_probabilities': {
+                        model_config['labels'][j]: float(confidence) if j == prediction else 0.0
+                        for j in range(model_config['num_classes'])
+                    }
+                }
+                segment_results.append(result_data)
+                
+                # Save individual segment prediction
+                results_mgr.save_segment_prediction(result_data)
             
             self.log_progress(f"✓ Processing complete!")
+            
+            # Save final comprehensive results
+            self.log_progress("Saving final results...")
+            results_mgr.save_final_results(segment_results, self.selected_model.get())
             
             # Update results in GUI
             self.root.after(0, self._update_results, segment_results, model_config['labels'])
