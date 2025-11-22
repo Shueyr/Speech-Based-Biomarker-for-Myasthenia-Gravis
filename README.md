@@ -32,17 +32,9 @@ This project builds upon the excellent work of the **FormantsTracker** project b
   - Binary Classification (Healthy vs. Sick)
     - ResNet18 - Recording Split
     - ResNet18 - Speaker Split
-  - Multi-class Classification (Normal, Mild, Moderate, Severe)
+  - Multi-class Classification (Healthy, Mild, Moderate, Severe)
     - VGG19-BN - Recording Split
     - VGG13-BN - Speaker Split
-
-- **Advanced Audio Processing Pipeline**
-  - Automatic resampling to 16kHz
-  - Voice Activity Detection (VAD) using Silero
-  - 10-second audio segmentation
-  - Phoneme detection (focusing on 'ah' sounds)
-  - Formant tracking (using FormantsTracker)
-  - Deep learning classification
 
 ## Installation
 
